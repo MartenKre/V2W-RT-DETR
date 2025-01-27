@@ -20,7 +20,7 @@ class YAMLConfig(BaseConfig):
 
         # pprint(cfg)
 
-        self.yaml_cfg = cfg 
+        self.yaml_cfg = cfg
 
         self.log_step = cfg.get('log_step', 100)
         self.checkpoint_step = cfg.get('checkpoint_step', 1)

@@ -51,16 +51,17 @@ class BaseSolver(object):
             print(f'Resume checkpoint from {self.cfg.resume}')
             self.resume(self.cfg.resume)
 
-        self.train_dataloader = dist.warp_loader(self.cfg.train_dataloader, \
-            shuffle=self.cfg.train_dataloader.shuffle)
-        self.val_dataloader = dist.warp_loader(self.cfg.val_dataloader, \
-            shuffle=self.cfg.val_dataloader.shuffle)
+        # self.train_dataloader = dist.warp_loader(self.cfg.train_dataloader, \
+        #     shuffle=self.cfg.train_dataloader.shuffle)
+        # self.val_dataloader = dist.warp_loader(self.cfg.val_dataloader, \
+        #     shuffle=self.cfg.val_dataloader.shuffle)
+        self.train_dataloader = dist.warp_loader(self.cfg.dataset, mode="train", batch_size=2, num_workers=4, augment=True, shuffle=True)
+        self.val_dataloader = dist.warp_loader(self.cfg.dataset, mode="val", batch_size=2, num_workers=4, augment=False, shuffle=False)
 
 
     def eval(self, ):
         self.setup()
-        self.val_dataloader = dist.warp_loader(self.cfg.val_dataloader, \
-            shuffle=self.cfg.val_dataloader.shuffle)
+        self.val_dataloader = dist.warp_loader(self.cfg.dataset, mode="val", batch_size=2, num_workers=4, augment=False, shuffle=False)
 
         if self.cfg.resume:
             print(f'resume from {self.cfg.resume}')

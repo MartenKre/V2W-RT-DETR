@@ -33,8 +33,18 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     scaler = kwargs.get('scaler', None)
 
     for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
-        samples = samples.to(device)
+        img, pad_q, pad_l, pad_mask_q, pad_mask_l, targets = samples
+        img = img.to(device)
+        pad_q = pad_q.to(device)
+        pad_l = pad_l.to(device)
+        pad_mask_q = pad_mask_q.to(device)
+        pad_mask_l = pad_mask_l.to(device)
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+        print(pad_q)
+        print(pad_l)
+        print(pad_mask_q)
+        print(pad_mask_l)
+        print(targets)
 
         if scaler is not None:
             with torch.autocast(device_type=str(device), cache_enabled=True):

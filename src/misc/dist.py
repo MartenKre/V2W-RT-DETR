@@ -18,6 +18,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from torch.utils.data import DistributedSampler
 from torch.utils.data.dataloader import DataLoader
+from src.data.buoy_dataset import BuoyDataset, collate_fn_adapt
 
 
 def init_distributed():
@@ -100,17 +101,19 @@ def warp_model(model, find_unused_parameters=False, sync_bn=False,):
         model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=find_unused_parameters)
     return model
 
-
-def warp_loader(loader, shuffle=False):        
+# def warp_loader(loader, shuffle=False):        
+def warp_loader(path_to_yaml = "",mode="train", batch_size=4, num_workers=4, augment=True, shuffle=True):
     if is_dist_available_and_initialized():
-        sampler = DistributedSampler(loader.dataset, shuffle=shuffle)
-        loader = DataLoader(loader.dataset, 
-                            loader.batch_size, 
+        dataset=BuoyDataset(path_to_yaml=path_to_yaml ,mode=mode, transform=False, augment=augment)
+        sampler = DistributedSampler(dataset, shuffle=shuffle)
+        drop_last = True if mode=="train" else False
+        loader = DataLoader(dataset, 
+                            batch_size, 
                             sampler=sampler, 
-                            drop_last=loader.drop_last, 
-                            collate_fn=loader.collate_fn, 
-                            pin_memory=loader.pin_memory,
-                            num_workers=loader.num_workers, )
+                            drop_last=drop_last, 
+                            collate_fn=collate_fn_adapt, 
+                            pin_memory=True,
+                            num_workers=num_workers, )
     return loader
 
 
