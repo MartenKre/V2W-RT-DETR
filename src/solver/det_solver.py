@@ -59,7 +59,8 @@ class DetSolver(BaseSolver):
                     best_stat[k] = max(best_stat[k], test_stats[k][0])
                 else:
                     best_stat['epoch'] = epoch
-                    best_stat[k] = test_stats[k][0]
+                    # best_stat[k] = test_stats[k][0]
+                    best_stat[k] = test_stats[k]
             print('best_stat: ', best_stat)
 
 
