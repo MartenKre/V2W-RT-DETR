@@ -140,9 +140,9 @@ class BuoyDataset(Dataset):
 
         # add target dict for rt-detr loss
         target = {}
+        _,h,w = img.size()
         if labels.numel() > 0:
             labels_target = torch.zeros((labels.size(0), 4), dtype=torch.float32)
-            _,h,w = img.size()
             labels_target[...,0] = (w *(labels[...,1] - labels[..., 3] / 2)).clamp(0, w)
             labels_target[...,1] = (h *(labels[...,2] - labels[..., 4] / 2)).clamp(0, h)
             labels_target[...,2] = (w *(labels[...,1] + labels[..., 3] / 2)).clamp(0, w)
@@ -156,6 +156,8 @@ class BuoyDataset(Dataset):
         else:
             target["boxes"] = torch.empty((0, 4))
             target["labels"] = torch.empty((0,))
+        target["orig_size"] = torch.as_tensor([int(w), int(h)])
+        target["size"] = torch.as_tensor([int(w), int(h)])
         
         sample = (img, queries, labels_extended, queries_mask, labels_mask, target)
 

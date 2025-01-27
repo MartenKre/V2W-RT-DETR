@@ -1,6 +1,7 @@
 """by lyuwenyu
 """
 
+from multiprocessing import Value
 import torch 
 import torch.nn as nn 
 import torch.nn.functional as F 
@@ -25,11 +26,7 @@ class RTDETR(nn.Module):
         self.encoder = encoder
         self.multi_scale = multi_scale
         
-    def forward(self, x, targets=None):
-        if self.multi_scale and self.training:
-            sz = np.random.choice(self.multi_scale)
-            x = F.interpolate(x, size=[sz, sz])
-            
+    def forward(self, x, targets=None, query=None, query_mask=None):
         x = self.backbone(x)
         x = self.encoder(x)        
         x = self.decoder(x, targets)

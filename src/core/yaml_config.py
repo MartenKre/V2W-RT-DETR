@@ -29,6 +29,7 @@ class YAMLConfig(BaseConfig):
         self.tuning = cfg.get('tuning', '')
         self.sync_bn = cfg.get('sync_bn', False)
         self.output_dir = cfg.get('output_dir', None)
+        self.dataset = cfg.get('dataset', "")
         
         self.use_ema = cfg.get('use_ema', False)
         self.use_amp = cfg.get('use_amp', False)

@@ -103,18 +103,26 @@ def warp_model(model, find_unused_parameters=False, sync_bn=False,):
 
 # def warp_loader(loader, shuffle=False):        
 def warp_loader(path_to_yaml = "",mode="train", batch_size=4, num_workers=4, augment=True, shuffle=True):
+    drop_last = True if mode=="train" else False
+    dataset=BuoyDataset(yaml_file=path_to_yaml ,mode=mode, transform=False, augment=augment)
     if is_dist_available_and_initialized():
-        dataset=BuoyDataset(path_to_yaml=path_to_yaml ,mode=mode, transform=False, augment=augment)
         sampler = DistributedSampler(dataset, shuffle=shuffle)
-        drop_last = True if mode=="train" else False
         loader = DataLoader(dataset, 
                             batch_size, 
                             sampler=sampler, 
                             drop_last=drop_last, 
                             collate_fn=collate_fn_adapt, 
-                            pin_memory=True,
                             num_workers=num_workers, )
+    else:
+        sampler = torch.utils.data.RandomSampler(dataset) if shuffle==True else torch.utils.data.SequentialSampler(dataset)
+        loader = DataLoader(dataset, 
+                            batch_size, 
+                            sampler=sampler,
+                            drop_last=drop_last, 
+                            collate_fn=collate_fn_adapt, 
+                            num_workers=num_workers)
     return loader
+
 
 
 
