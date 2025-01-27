@@ -39,8 +39,6 @@ HybridEncoder:
   depth_mult: 1
   act: 'silu'
 
-  # eval
-  eval_spatial_size: [640, 640]
 
 
 RTDETRTransformer:
@@ -55,7 +53,6 @@ RTDETRTransformer:
   num_denoising: 100
   
   eval_idx: -1
-  eval_spatial_size: [640, 640]
 
 
 use_focal_loss: True

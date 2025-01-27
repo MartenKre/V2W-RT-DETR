@@ -142,20 +142,21 @@ class BuoyDataset(Dataset):
         target = {}
         _,h,w = img.size()
         if labels.numel() > 0:
-            labels_target = torch.zeros((labels.size(0), 4), dtype=torch.float32)
-            labels_target[...,0] = (w *(labels[...,1] - labels[..., 3] / 2)).clamp(0, w)
-            labels_target[...,1] = (h *(labels[...,2] - labels[..., 4] / 2)).clamp(0, h)
-            labels_target[...,2] = (w *(labels[...,1] + labels[..., 3] / 2)).clamp(0, w)
-            labels_target[...,3] = (h *(labels[...,2] + labels[..., 4] / 2)).clamp(0, h)
+            # labels_target = torch.zeros((labels.size(0), 4), dtype=torch.float32)
+            # labels_target[...,0] = (w *(labels[...,1] - labels[..., 3] / 2)).clamp(0, w)
+            # labels_target[...,1] = (h *(labels[...,2] - labels[..., 4] / 2)).clamp(0, h)
+            # labels_target[...,2] = (w *(labels[...,1] + labels[..., 3] / 2)).clamp(0, w)
+            # labels_target[...,3] = (h *(labels[...,2] + labels[..., 4] / 2)).clamp(0, h)
+            labels_target = labels[...,1:]
             target['boxes'] = datapoints.BoundingBox(
                 labels_target.tolist(), 
                 format=datapoints.BoundingBoxFormat.XYXY, 
                 spatial_size=(h, w) # h w
             )
-            target["labels"] = torch.ones((labels.size(0)), dtype=torch.float32)
+            target["labels"] = torch.zeros((labels.size(0)), dtype=torch.long)
         else:
-            target["boxes"] = torch.empty((0, 4))
-            target["labels"] = torch.empty((0,))
+            target["boxes"] = torch.empty((0, 4), dtype=torch.float32)
+            target["labels"] = torch.empty((0,), dtype=torch.long)
         target["orig_size"] = torch.as_tensor([int(w), int(h)])
         target["size"] = torch.as_tensor([int(w), int(h)])
         
