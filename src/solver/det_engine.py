@@ -147,7 +147,7 @@ def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors,
 
 def prepare_ap_data(outputs, labels, labels_mask):
     src_boxes = outputs['pred_boxes']
-    src_logits = F.sigmoid(outputs['pred_logits'].squeeze())
+    src_logits = outputs['pred_logits'].squeeze()
     labels = labels[..., 1:]
     preds = []
     target = []
