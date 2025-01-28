@@ -303,7 +303,7 @@ class SetCriterion(nn.Module):
         # Compute all the requested losses
         losses = {}
         for loss in self.losses:
-            l_dict = self.get_loss(loss, outputs, targets, indices, num_boxes, labels, queries_mask, labels_mask, num_q, num_l **kwargs)
+            l_dict = self.get_loss(loss, outputs, targets, indices, num_boxes, labels, queries_mask, labels_mask, num_q, num_l)
             l_dict = {k: l_dict[k] * self.weight_dict[k] for k in l_dict if k in self.weight_dict}
             losses.update(l_dict)
 
@@ -323,7 +323,7 @@ class SetCriterion(nn.Module):
                         # Logging is enabled only for the last layer
                         kwargs = {'log': False}
 
-                    l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes, labels, queries_mask, labels_mask, num_q, num_l **kwargs)
+                    l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes, labels, queries_mask, labels_mask, num_q, num_l, **kwargs)
                     l_dict = {k: l_dict[k] * self.weight_dict[k] for k in l_dict if k in self.weight_dict}
                     l_dict = {k + f'_aux_{i}': v for k, v in l_dict.items()}
                     losses.update(l_dict)
@@ -345,7 +345,7 @@ class SetCriterion(nn.Module):
                         # Logging is enabled only for the last layer
                         kwargs = {'log': False}
 
-                    l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes, **kwargs)
+                    l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes, labels, queries_mask, labels_mask, num_q, num_l, **kwargs)
                     l_dict = {k: l_dict[k] * self.weight_dict[k] for k in l_dict if k in self.weight_dict}
                     l_dict = {k + f'_dn_{i}': v for k, v in l_dict.items()}
                     losses.update(l_dict)
