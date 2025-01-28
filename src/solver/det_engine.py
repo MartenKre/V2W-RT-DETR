@@ -10,9 +10,12 @@ import os
 import sys
 import pathlib
 from typing import Iterable
+from pprint import pprint
 
 import torch
 import torch.amp 
+import torchmetrics
+import torch.nn.functional as F
 
 from src.data import CocoEvaluator
 from src.misc import (MetricLogger, SmoothedValue, reduce_dict)
@@ -103,6 +106,8 @@ def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors,
     # metric_logger.add_meter('class_error', SmoothedValue(window_size=1, fmt='{value:.2f}'))
     header = 'Test:'
 
+    ap_metric=torchmetrics.detection.MeanAveragePrecision(box_format="cxcywh", iou_type='bbox')
+
     for samples in metric_logger.log_every(data_loader, 10, header):
         img, pad_q, pad_l, pad_mask_q, pad_mask_l, targets = samples
         img = img.to(device)
@@ -128,14 +133,35 @@ def evaluate(model: torch.nn.Module, criterion: torch.nn.Module, postprocessors,
         metric_logger.update(loss=sum(loss_dict_reduced_scaled.values()),
                              **loss_dict_reduced_scaled,
                              **loss_dict_reduced_unscaled)
+        preds, target = prepare_ap_data(outputs, pad_l, pad_mask_l)
+        ap_metric.update(preds, target)
 
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
+    pprint(ap_metric.compute())
     
     stats = {}
     stats = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
             
     return stats, None
 
+def prepare_ap_data(outputs, labels, labels_mask):
+    src_boxes = outputs['pred_boxes']
+    src_logits = F.sigmoid(outputs['pred_logits'].squeeze())
+    labels = labels[..., 1:]
+    preds = []
+    target = []
+    batch_size=src_boxes.size(0)
+    for i in range(0, batch_size):
+        dct = {"boxes": src_boxes[i],
+               "scores": src_logits[i],
+               "labels": torch.zeros_like(src_logits[i], device=src_logits.device, dtype=int)}
+        preds.append(dct)
+
+        dct2 = {"boxes": labels[i][labels_mask[i]],
+                "labels": torch.zeros((labels_mask[i].sum()), device=labels_mask.device, dtype=int)}
+        target.append(dct2)
+
+    return preds, target
 
 

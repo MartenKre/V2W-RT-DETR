@@ -290,15 +290,21 @@ class SetCriterion(nn.Module):
             torch.distributed.all_reduce(num_boxes)
         num_boxes = torch.clamp(num_boxes / get_world_size(), min=1).item()
 
-        num_q = queries_mask.sum()
-        if is_dist_available_and_initialized():
-            torch.distributed.all_reduce(num_q)
-        num_q = torch.clamp(num_q / get_world_size(), min=1).item()
+        if queries_mask is not None:
+            num_q = queries_mask.sum()
+            if is_dist_available_and_initialized():
+                torch.distributed.all_reduce(num_q)
+            num_q = torch.clamp(num_q / get_world_size(), min=1).item()
+        else:
+            num_q = None
 
-        num_l = queries_mask.sum()
-        if is_dist_available_and_initialized():
-            torch.distributed.all_reduce(num_l)
-        num_l = torch.clamp(num_l / get_world_size(), min=1).item()
+        if labels_mask is not None:
+            num_l = queries_mask.sum()
+            if is_dist_available_and_initialized():
+                torch.distributed.all_reduce(num_l)
+            num_l = torch.clamp(num_l / get_world_size(), min=1).item()
+        else:
+            num_l = None
 
         # Compute all the requested losses
         losses = {}
