@@ -2,7 +2,7 @@
 from torch.utils.data import Dataset
 from torchvision import transforms
 from torch.nn.utils.rnn import pad_sequence
-from torchvision import datapoints
+# from torchvision import datapoints
 import torch
 import yaml
 import os
@@ -148,11 +148,12 @@ class BuoyDataset(Dataset):
             # labels_target[...,2] = (w *(labels[...,1] + labels[..., 3] / 2)).clamp(0, w)
             # labels_target[...,3] = (h *(labels[...,2] + labels[..., 4] / 2)).clamp(0, h)
             labels_target = labels[...,1:]
-            target['boxes'] = datapoints.BoundingBox(
-                labels_target.tolist(), 
-                format=datapoints.BoundingBoxFormat.XYXY, 
-                spatial_size=(h, w) # h w
-            )
+            # target['boxes'] = datapoints.BoundingBox(
+            #     labels_target.tolist(), 
+            #     format=datapoints.BoundingBoxFormat.XYXY, 
+            #     spatial_size=(h, w) # h w
+            # )
+            target["boxes"] = labels_target
             target["labels"] = torch.zeros((labels.size(0)), dtype=torch.long)
         else:
             target["boxes"] = torch.empty((0, 4), dtype=torch.float32)
