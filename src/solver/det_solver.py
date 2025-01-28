@@ -55,8 +55,8 @@ class DetSolver(BaseSolver):
             # TODO 
             for k in test_stats.keys():
                 if k in best_stat:
-                    best_stat['epoch'] = epoch if test_stats[k][0] > best_stat[k] else best_stat['epoch']
-                    best_stat[k] = max(best_stat[k], test_stats[k][0])
+                    best_stat['epoch'] = epoch if test_stats[k] > best_stat[k] else best_stat['epoch']
+                    best_stat[k] = max(best_stat[k], test_stats[k])
                 else:
                     best_stat['epoch'] = epoch
                     # best_stat[k] = test_stats[k][0]

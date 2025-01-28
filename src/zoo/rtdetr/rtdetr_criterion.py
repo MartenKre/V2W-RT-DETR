@@ -199,6 +199,46 @@ class SetCriterion(nn.Module):
         }
         return losses
 
+    def loss_objects_class(self, outputs, labels, queries_mask, labels_mask, num_q, num_l):
+        """Classification loss (NLL)
+        outputs: dict containing pred_logits key that points to objectness pred tensor
+        targets: tensor with size (B_SZ, Max_seq_len, 5)
+        queries_mask: for each sample in batch contains binary mask for each outputs
+        """
+        assert 'pred_logits' in outputs
+        src_logits = outputs['pred_logits']
+        
+        targets = torch.zeros_like(src_logits) 
+        targets[labels_mask] = 1.0 # target mask to find labels idx where objectness = 1
+
+        loss_bce = F.binary_cross_entropy(src_logits, targets, reduction='none')
+        loss_bce = loss_bce[queries_mask].sum() /  num_q     # compute mean loss (only for non padded elements)
+        losses = {'loss_bce_objects': loss_bce}
+
+        return losses
+
+    def loss_objects_boxes(self, outputs, labels, queries_mask, labels_mask, num_q, num_l):
+        """Compute the losses related to the bounding boxes, the L1 regression loss and the GIoU loss
+            outputs: dict containing pred_boxess key that points to boxes pred tensor
+            targets: tensor with size (B_SZ, Max_seq_len, 5)
+           The target boxes are expected in format (center_x, center_y, w, h), normalized by the image size.
+        """
+        assert 'pred_boxes' in outputs
+        src_boxes = outputs['pred_boxes']
+
+        target_boxes = labels[..., 1:]  # only extract relevant BB labels (not query id)
+
+        losses = {}
+        loss_bbox = F.l1_loss(src_boxes, target_boxes, reduction='none')
+        losses['loss_bbox_objects'] = loss_bbox[labels_mask].sum() / num_l # filter loss based on elements than contain gt label
+
+        src_xyxy = box_cxcywh_to_xyxy(src_boxes).flatten(start_dim=0, end_dim=1)
+        target_xyxy = box_cxcywh_to_xyxy(target_boxes).flatten(0, 1)
+        loss_giou = 1 - torch.diag(generalized_box_iou(src_xyxy,target_xyxy))
+        losses['loss_giou_objects'] = loss_giou[labels_mask.flatten(0,1)].sum() / num_l
+
+        return losses
+
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
         batch_idx = torch.cat([torch.full_like(src, i) for i, (src, _) in enumerate(indices)])
@@ -211,7 +251,7 @@ class SetCriterion(nn.Module):
         tgt_idx = torch.cat([tgt for (_, tgt) in indices])
         return batch_idx, tgt_idx
 
-    def get_loss(self, loss, outputs, targets, indices, num_boxes, **kwargs):
+    def get_loss(self, loss, outputs, targets, indices, num_boxes, labels, queries_mask, labels_mask, num_q, num_l, **kwargs):
         loss_map = {
             'labels': self.loss_labels,
             'cardinality': self.loss_cardinality,
@@ -221,9 +261,15 @@ class SetCriterion(nn.Module):
             'bce': self.loss_labels_bce,
             'focal': self.loss_labels_focal,
             'vfl': self.loss_labels_vfl,
+
+            'labels_objects': self.loss_objects_class,
+            'boxes_objects': self.loss_objects_boxes,
         }
         assert loss in loss_map, f'do you really want to compute {loss} loss?'
-        return loss_map[loss](outputs, targets, indices, num_boxes, **kwargs)
+        if loss is not 'labels_objects' and loss is not 'boxes_objects':
+            return loss_map[loss](outputs, targets, indices, num_boxes, **kwargs)
+        else:
+            return loss_map[loss](self, outputs, labels, queries_mask, labels_mask, num_q, num_l)
 
     def forward(self, outputs, targets, labels=None, queries_mask=None, labels_mask=None):
         """ This performs the loss computation.
@@ -244,10 +290,20 @@ class SetCriterion(nn.Module):
             torch.distributed.all_reduce(num_boxes)
         num_boxes = torch.clamp(num_boxes / get_world_size(), min=1).item()
 
+        num_q = queries_mask.sum()
+        if is_dist_available_and_initialized():
+            torch.distributed.all_reduce(num_q)
+        num_q = torch.clamp(num_q / get_world_size(), min=1).item()
+
+        num_l = queries_mask.sum()
+        if is_dist_available_and_initialized():
+            torch.distributed.all_reduce(num_l)
+        num_l = torch.clamp(num_l / get_world_size(), min=1).item()
+
         # Compute all the requested losses
         losses = {}
         for loss in self.losses:
-            l_dict = self.get_loss(loss, outputs, targets, indices, num_boxes)
+            l_dict = self.get_loss(loss, outputs, targets, indices, num_boxes, labels, queries_mask, labels_mask, num_q, num_l **kwargs)
             l_dict = {k: l_dict[k] * self.weight_dict[k] for k in l_dict if k in self.weight_dict}
             losses.update(l_dict)
 
@@ -256,6 +312,9 @@ class SetCriterion(nn.Module):
             for i, aux_outputs in enumerate(outputs['aux_outputs']):
                 indices = self.matcher(aux_outputs, targets)
                 for loss in self.losses:
+                    if "objects" in loss:
+                        # do not compute aux loss for object association
+                        continue
                     if loss == 'masks':
                         # Intermediate masks losses are too costly to compute, we ignore them.
                         continue
@@ -264,7 +323,7 @@ class SetCriterion(nn.Module):
                         # Logging is enabled only for the last layer
                         kwargs = {'log': False}
 
-                    l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes, **kwargs)
+                    l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_boxes, labels, queries_mask, labels_mask, num_q, num_l **kwargs)
                     l_dict = {k: l_dict[k] * self.weight_dict[k] for k in l_dict if k in self.weight_dict}
                     l_dict = {k + f'_aux_{i}': v for k, v in l_dict.items()}
                     losses.update(l_dict)

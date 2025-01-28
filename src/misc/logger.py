@@ -141,6 +141,16 @@ def reduce_dict(input_dict, average=True) -> Dict[str, torch.Tensor]:
             names.append(k)
             values.append(input_dict[k])
         values = torch.stack(values, dim=0)
+        # if len([x for x in names if "dn" in x]) == 0:
+        #     v = values
+        #     values = torch.zeros((v.size(0)+3*6), device=v.device)
+        #     assert 33 < values.size(0)
+        #     values[0:7] = v[0:7]
+        #     values[13:20] = v[7:14]
+        #     values[26:33] = v[14:]
+        #     for i in range(0, 3*6):
+        #         names.append("dn_loss_"+str(i))
+
         tdist.all_reduce(values)
         if average:
             values /= world_size
