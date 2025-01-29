@@ -10,6 +10,7 @@ from typing import Dict
 
 from src.misc import dist
 from src.core import BaseConfig
+from src.zoo.v2w_decoder import Transformer, V2W_Transformer
 
 
 class BaseSolver(object):
@@ -25,7 +26,9 @@ class BaseSolver(object):
         self.device = device
         self.last_epoch = cfg.last_epoch
 
-        self.model = dist.warp_model(cfg.model.to(device), cfg.find_unused_parameters, cfg.sync_bn)
+        rt_detr = dist.warp_model(cfg.model.to(device), cfg.find_unused_parameters, cfg.sync_bn)
+        objects_decoder = Transformer(num_encoder_layers=3).to(device)
+        self.model = V2W_Transformer(rt_detr, objects_decoder).to(device)
         self.criterion = cfg.criterion.to(device)
         self.postprocessor = cfg.postprocessor
 

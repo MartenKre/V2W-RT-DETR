@@ -29,9 +29,9 @@ class RTDETR(nn.Module):
     def forward(self, x, targets=None, query=None, query_mask=None):
         x = self.backbone(x)
         x = self.encoder(x)        
-        x = self.decoder(x, targets)
-
-        return x
+        x,memory = self.decoder(x, targets)
+            
+        return x, memory
     
     def deploy(self, ):
         self.eval()
